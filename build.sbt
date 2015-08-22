@@ -18,7 +18,9 @@ lazy val deps = {
     "com.typesafe.akka" %% "akka-stream-experimental" % akkaStreamV,
     "com.typesafe.play" %% "play-json" % "2.3.4",
     "com.typesafe.play" %% "play-ws" % "2.3.4",
-    "org.apache.spark" %% "spark-core" % "1.4.0"
+    "mysql" % "mysql-connector-java" % "5.1.36",
+    "org.apache.spark" %% "spark-core" % "1.4.0",
+    "org.apache.spark" %% "spark-sql" % "1.4.0"
   )
 }
 
