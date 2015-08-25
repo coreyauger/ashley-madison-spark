@@ -8,19 +8,15 @@ resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/release
 
 libraryDependencies ++= deps
 
-scalaVersion := "2.11.6"
+scalaVersion := "2.10.4"
 
 lazy val deps = {
   val akkaV = "2.3.9"
   val akkaStreamV = "1.0-RC3"
   Seq(
-    "com.typesafe.akka" %% "akka-actor" % akkaV,
-    "com.typesafe.akka" %% "akka-stream-experimental" % akkaStreamV,
-    "com.typesafe.play" %% "play-json" % "2.3.4",
-    "com.typesafe.play" %% "play-ws" % "2.3.4",
-    "mysql" % "mysql-connector-java" % "5.1.36",
-    "org.apache.spark" %% "spark-core" % "1.4.0",
-    "org.apache.spark" %% "spark-sql" % "1.4.0"
+    "mysql" % "mysql-connector-java" % "5.1.+" % "compile",
+    "org.apache.spark" %% "spark-core" % "1.4.1",
+    "org.apache.spark" %% "spark-sql" % "1.4.1"
   )
 }
 
