@@ -55,6 +55,7 @@ object Main extends App{
 
     // now.. lets get down and dirty.
     val amDf = df.select(
+      "id",
       "city",
       "zip",
       "state",
@@ -91,52 +92,108 @@ object Main extends App{
 
     val women = amDf.filter("gender = 1").cache()
     val men = amDf.filter("gender = 2").cache()
-    println(s"Num Women ${women.count()}")
-    println(s"Num Men ${men.count()}")
 
-    p.write(s"Num Women ${women.count()}\n")
-    p.write(s"Num Men ${men.count()} \n")
+    val menN = men.count()
+    val womenN = women.count()
+    println(s"Num Women ${womenN}")
+    println(s"Num Men ${menN}")
+
+    p.write(s"Num Women ${womenN}\n")
+    p.write(s"Num Men ${menN} \n")
     p.write("\n\n")
 
     men.registerTempTable("Men")
     women.registerTempTable("Women")
 
+
+    // open to totals...
+    /*
+    val menOpenTo = men.select(df("pref_opento")).map { r =>
+      (r.getString(0).split("\\|").filter(_ != "").map(s => IntTypeMapping.prefOpenTo.get(s.toInt)).filter(_ != None).map(_.get).toSet)
+    }
+    val womenOpenTo = women.select(df("pref_opento")).map { r =>
+      (r.getString(0).split("\\|").filter(_ != "").map(s => IntTypeMapping.prefOpenTo.get(s.toInt)).filter(_ != None).map(_.get).toSet)
+    }
+    IntTypeMapping.prefOpenTo.values.map { opento =>
+      p.write(s"Men ${opento} totals\n")
+      val menx = menOpenTo.filter(_.contains(opento)).count
+      p.write(s"${menx} / ${menN}   ${(menx.toDouble/menN.toDouble)}\n\n")
+
+      p.write(s"Women ${opento} totals\n")
+      val womenx = womenOpenTo.filter(_.contains(opento)).count
+      p.write(s"${womenx} / ${womenN}   ${(womenx.toDouble/womenN.toDouble)}\n\n\n")
+
+    }
+    */
+
+
+    // Discovered that Lat,Lng in a LOT of cases is messed up.. (sign is inverted)
+    // eg: "Vancouver"
+    // (distance, (city, population, openTo, userLat, userLng, cityLat, cityLng)
+    // List((245.80350473473368,(Vancouver,157517,|7|,49.25,123.1__,45.6388889,-122.6602778)), (246.25003299999997,(Vancouver,1837970,|7|,49.25,123.1___,49.25,-123.133333)))
+    /*
     val menCityOpenTo = sqlContext.sql(
       """
-        |SELECT a.city, a.pref_opento, b.Population, b.Country, b.Latitude, b.Longitude
+        |SELECT a.id, a.city, a.pref_opento, a.latitude, a.longitude, b.Population, b.Latitude, b.Longitude
         |FROM Men a JOIN Cities b
         |ON lower(a.city) = lower(b.City)
-        |WHERE b.Population > 100000
+        |WHERE a.latitude > 0
       """.stripMargin
     )
 
     menCityOpenTo.show(40)
 
+    menCityOpenTo.map{ r =>
+      (s"${r.getString(1)}-${r.getInt(0)}", (r.getString(1), r.getInt(5), r.getString(2), r.getDouble(3), r.getDouble(4), r.getDouble(6), r.getDouble(7)))
+    }.groupByKey().map{ r =>
+      r._2.map{
+        case (city, population, openTo, userLat, userLng, cityLat, cityLng) =>
+          val dist = Math.sqrt( Math.pow(userLat-cityLat,2)+Math.pow(userLng-cityLng,2)  )
+          (dist,(city,population,openTo, userLat, userLng, cityLat, cityLng))
+      }.toList.sortBy(_._1)
+
+    }.take(50).foreach(println)
+    */
+
+
+    val menCityOpenTo = sqlContext.sql(
+      """
+        |SELECT a.city, a.pref_opento, b.Population
+        |FROM Men a JOIN Cities b
+        |ON lower(a.city) = lower(b.City)
+        |ORDER BY b.Population
+      """.stripMargin
+    )
+
+    val womenCityOpenTo = sqlContext.sql(
+      """
+        |SELECT a.city, a.pref_opento, b.Population
+        |FROM Women a JOIN Cities b
+        |ON lower(a.city) = lower(b.City)
+        |ORDER BY b.Population
+      """.stripMargin
+    )
+
+
+
     val menCityOpenTo2 = menCityOpenTo.map { r =>
-      (r.getString(0), r.getString(1).split("\\|").filter(_ != "").map(s => IntTypeMapping.prefOpenTo.get(s.toInt)).filter(_ != None).map(_.get).toSet, r.getInt(2), r.getString(3))
+      (r.getString(0), r.getString(1).split("\\|").filter(_ != "").map(s => IntTypeMapping.prefOpenTo.get(s.toInt)).filter(_ != None).map(_.get).toSet, r.getInt(2))
     }
-    //val menCityOpenTo2 =  men.select(df("city"), df("pref_opento")).map { r =>
-    //  (r.getString(0), r.getString(1).split("\\|").filter(_ != "").map(s => IntTypeMapping.prefOpenTo.get(s.toInt)).filter(_ != None).map(_.get).toSet)
-    //}
-    val womenCityOpenTo = women.select(df("city"), df("pref_opento")).map { r =>
-      (r.getString(0), r.getString(1).split("\\|").filter(_ != "").map(s => IntTypeMapping.prefOpenTo.get(s.toInt)).filter(_ != None).map(_.get).toSet)
+    val womenCityOpenTo2 = womenCityOpenTo.map { r =>
+      (r.getString(0), r.getString(1).split("\\|").filter(_ != "").map(s => IntTypeMapping.prefOpenTo.get(s.toInt)).filter(_ != None).map(_.get).toSet, r.getInt(2))
     }
 
 
     IntTypeMapping.prefOpenTo.values.take(5).map { opento =>
       p.write(s"Men Open to ${opento}\n")
-      menCityOpenTo2.filter(_._2.contains(opento)).map(r => ((r._1,r._3,r._4), 1) ).reduceByKey((a,b) => a+b).map(s => (s._1._1,s._1._3,s._1._2.toDouble, s._2 )).sortBy( _._4, false).take(20).foreach(s => p.write(s.toString+ "\n"))
+      menCityOpenTo2.filter(_._2.contains(opento)).map(r => ((r._1,r._3), 1) ).reduceByKey((a,b) => a+b).map(s => (s._1._1,s._1._2.toDouble, s._2 )).sortBy( _._3, false).take(20).foreach(s => p.write(s.toString+ "\n"))
       //menCityOpenTo2.filter(_._2.contains(opento)).map(r => (r._1, 1) ).reduceByKey((a,b) => a+b).map(s => (s._1, s._2 )).sortBy( _._2, false).take(20).foreach(s => p.write(s.toString+ "\n"))
       p.write("\n")
       p.write(s"Women Open to ${opento}\n")
-      womenCityOpenTo.filter(_._2.contains(opento)).map(r => (r._1, 1) ).reduceByKey((a,b) => a+b).sortBy( _._2, false).take(20).foreach(s => p.write(s.toString+ "\n"))
+      womenCityOpenTo2.filter(_._2.contains(opento)).map(r => ((r._1,r._3), 1) ).reduceByKey((a,b) => a+b).map(s => (s._1._1,s._1._2.toDouble, s._2 )).sortBy( _._3, false).take(20).foreach(s => p.write(s.toString+ "\n"))
       p.write("\n\n")
     }
 
-      //.take(10).foreach(println)
-
-
-    // Cities by "Threesome"
 
     p.close()
     sc.stop()
