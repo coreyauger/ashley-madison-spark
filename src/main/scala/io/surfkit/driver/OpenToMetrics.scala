@@ -1,22 +1,15 @@
 package io.surfkit.driver
 
-import com.typesafe.config.ConfigFactory
-import io.surfkit.am.IntTypeMapping
 import io.surfkit.data.Data
-import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.Predef._
-import scala.io._
-import org.apache.spark.sql._
-import scala.util._
-import scala.concurrent.Await
-import scala.concurrent.duration._
+
 /**
  *
  * Created by Corey Auger
  */
 
-object Main extends App with SparkSetup{
+object OpenToMetrics extends App with SparkSetup{
 
   override def main(args: Array[String]) {
 
@@ -24,39 +17,28 @@ object Main extends App with SparkSetup{
 
 
 
-    val p = new java.io.PrintWriter("opento.txt")
+    val p = new java.io.PrintWriter("./output/opento.json")
 
 
 
+    val women = sqlContext.sql(
+      """
+        |SELECT pref_opento, city, state, country, gender, dob, profile_ethnicity, profile_bodytype
+        |WHERE gender = 2
+      """.stripMargin
+    ).cache()
+    val men = sqlContext.sql(
+      """
+        |SELECT pref_opento, city, state, country, gender, dob, profile_ethnicity, profile_bodytype
+        |WHERE gender = 1
+      """.stripMargin
+    ).cache()
 
+    // TODO: group by city / region
+    // TODO: group by country
+    // TODO: group by age
+    // TODO: group by body type
 
-    // now.. lets get down and dirty.
-    val amDf = df.select(
-      "id",
-      "city",
-      "zip",
-      "state",
-      "latitude",
-      "longitude",
-      "country",
-      "gender",
-      "dob",
-      "profile_caption",           // text
-      "profile_ethnicity",
-      "profile_weight",
-      "profile_height",
-      "profile_bodytype",
-      "profile_smoke",
-      "profile_drink",
-      "profile_relationship",
-      "pref_opento",
-      "pref_turnsmeon",
-      "pref_lookingfor",
-      "pref_lookingfor_abstract"    // text
-    )
-    // print the schema ..............
-    println(amDf.schema)
-    println("doing query..")
 
     //load the city and population data
     val worldCities = sc.textFile("../data/cities/worldcitiespop.txt")
@@ -69,8 +51,6 @@ object Main extends App with SparkSetup{
     //worldCities.show(100)
     worldCities.registerTempTable("Cities")
 
-    val women = amDf.filter("gender = 1").cache()
-    val men = amDf.filter("gender = 2").cache()
 
     val menN = men.count()
     val womenN = women.count()
@@ -83,55 +63,6 @@ object Main extends App with SparkSetup{
 
     men.registerTempTable("Men")
     women.registerTempTable("Women")
-
-
-
-    val menProfileCaption = sqlContext.sql(
-      """
-        |SELECT a.profile_caption
-        |FROM Men a
-      """.stripMargin
-    )
-
-    val NGramSize = 5
-
-    menProfileCaption
-      // TODO: remove punctuation
-      // TODO: remove stop words ?
-      .map(r => r.getString(0).toLowerCase.split(" ") )   // lower case + split
-      .filter(r => r.length >= NGramSize)     // filter our small profiles
-      .flatMap(r => r.sliding(NGramSize) )
-      .map(r => (r.mkString(" "), 1))
-      .reduceByKey((a,b) => a+b)
-      .sortBy( _._2, false)
-      .take(25).foreach(println)
-
-
-    val womenProfileCaption = sqlContext.sql(
-      """
-        |SELECT a.profile_caption
-        |FROM Women a
-      """.stripMargin
-    )
-
-
-
-    womenProfileCaption
-      // TODO: remove punctuation
-      // TODO: remove stop words ?
-      .map(r => r.getString(0).toLowerCase.split(" ") )   // lower case + split
-      .filter(r => r.length >= NGramSize)     // filter our small profiles
-      .flatMap(r => r.sliding(NGramSize) )
-      .map(r => (r.mkString(" "), 1))
-      .reduceByKey((a,b) => a+b)
-      .sortBy( _._2, false)
-      .take(25).foreach(println)
-
-
-    // TODO: body type stats (age, height, ethnic, ect...)
-
-
-    println("################################################################################")
 
 
     // open to totals...
