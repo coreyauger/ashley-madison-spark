@@ -32,7 +32,7 @@ object Main extends App{
 
     val conf = new SparkConf()
       .setAppName("Ashley Madison")
-      .setMaster("spark://192.168.200.237:7077")
+      .setMaster("spark://192.168.200.240:7077")
       .setJars(jars :+ "./target/scala-2.10/ashley-madison-spark_2.10-1.0.jar")      // send workers the driver..
 
     println("loading spark conf")
@@ -64,6 +64,7 @@ object Main extends App{
       "country",
       "gender",
       "dob",
+      "profile_caption",           // text
       "profile_ethnicity",
       "profile_weight",
       "profile_height",
@@ -73,7 +74,8 @@ object Main extends App{
       "profile_relationship",
       "pref_opento",
       "pref_turnsmeon",
-      "pref_lookingfor"
+      "pref_lookingfor",
+      "pref_lookingfor_abstract"    // text
     )
     // print the schema ..............
     println(amDf.schema)
@@ -104,6 +106,55 @@ object Main extends App{
 
     men.registerTempTable("Men")
     women.registerTempTable("Women")
+
+
+
+    val menProfileCaption = sqlContext.sql(
+      """
+        |SELECT a.profile_caption
+        |FROM Men a
+      """.stripMargin
+    )
+
+    val NGramSize = 5
+
+    menProfileCaption
+      // TODO: remove punctuation
+      // TODO: remove stop words ?
+      .map(r => r.getString(0).toLowerCase.split(" ") )   // lower case + split
+      .filter(r => r.length >= NGramSize)     // filter our small profiles
+      .flatMap(r => r.sliding(NGramSize) )
+      .map(r => (r.mkString(" "), 1))
+      .reduceByKey((a,b) => a+b)
+      .sortBy( _._2, false)
+      .take(25).foreach(println)
+
+
+    val womenProfileCaption = sqlContext.sql(
+      """
+        |SELECT a.profile_caption
+        |FROM Women a
+      """.stripMargin
+    )
+
+
+
+    womenProfileCaption
+      // TODO: remove punctuation
+      // TODO: remove stop words ?
+      .map(r => r.getString(0).toLowerCase.split(" ") )   // lower case + split
+      .filter(r => r.length >= NGramSize)     // filter our small profiles
+      .flatMap(r => r.sliding(NGramSize) )
+      .map(r => (r.mkString(" "), 1))
+      .reduceByKey((a,b) => a+b)
+      .sortBy( _._2, false)
+      .take(25).foreach(println)
+
+
+    // TODO: body type stats (age, height, ethnic, ect...)
+
+
+    println("################################################################################")
 
 
     // open to totals...
@@ -156,6 +207,8 @@ object Main extends App{
     */
 
 
+    // TODO: all 1
+    /*
     val menCityOpenTo = sqlContext.sql(
       """
         |SELECT a.city, a.pref_opento, b.Population
@@ -193,6 +246,7 @@ object Main extends App{
       womenCityOpenTo2.filter(_._2.contains(opento)).map(r => ((r._1,r._3), 1) ).reduceByKey((a,b) => a+b).map(s => (s._1._1,s._1._2.toDouble, s._2 )).sortBy( _._3, false).take(20).foreach(s => p.write(s.toString+ "\n"))
       p.write("\n\n")
     }
+    */
 
 
     p.close()
