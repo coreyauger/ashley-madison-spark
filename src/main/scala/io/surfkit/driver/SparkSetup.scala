@@ -21,7 +21,14 @@ trait SparkSetup {
     .setAppName("Ashley Madison")
     .setMaster(config.getString("spark.master"))
     .set("spark.executor.memory", "8g")
-    .setJars(jars :+ "./target/scala-2.10/ashley-madison-spark_2.10-1.0.jar")      // send workers the driver..
+    .setJars(jars ++
+      Seq(
+        "./target/scala-2.10/ashley-madison-spark_2.10-1.0.jar",
+        "./lib/quasiquotes_2.10-2.0.0.jar",
+        "./lib/upickle_2.10-0.3.6.jar"
+      )
+    )      // send workers the driver..
+
 
   println("loading spark conf")
   val sc = new SparkContext(conf)
@@ -34,8 +41,8 @@ trait SparkSetup {
 
   val df = sqlContext.load("jdbc", Map(
     "url" -> config.getString("database"),
-    //"dbtable" -> "am_am_member",
-    "dbtable" -> "am_tmp",            // small subset (10,000) records.
+    "dbtable" -> "am_am_member",
+    //"dbtable" -> "am_tmp",            // small subset (10,000) records.
     "user" -> config.getString("dbuser"),
     "password" -> config.getString("password") ))
   .registerTempTable("members")
