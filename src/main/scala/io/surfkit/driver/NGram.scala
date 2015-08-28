@@ -1,5 +1,7 @@
 package io.surfkit.driver
 
+import java.io.InputStream
+
 import io.surfkit.data.Data
 import io.surfkit.data.Data.NGramStats
 import org.apache.spark.rdd.RDD
@@ -34,7 +36,8 @@ object NGram extends App with SparkSetup{
     )
 
 
-    val stopWords = sc.textFile("./stopwords.txt").collect().toSet
+    val stream : InputStream = getClass.getResourceAsStream("/stopwords.txt")
+    val stopWords = scala.io.Source.fromInputStream( stream ).getLines.map(_.trim).toSet
 
     // TODO: ngram by city.. ??
     // TODO: ngram by age
