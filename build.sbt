@@ -24,4 +24,6 @@ lazy val deps = {
 
 addCommandAlias("email",  "run-main io.surfkit.driver.EmailMetrics")
 
+addCommandAlias("ngram",  "run-main io.surfkit.driver.NGram")
+
 addCommandAlias("main",  "run-main io.surfkit.driver.Main")

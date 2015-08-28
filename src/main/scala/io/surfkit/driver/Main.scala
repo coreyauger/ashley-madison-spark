@@ -26,133 +26,133 @@ object Main extends App with SparkSetup{
 
     val p = new java.io.PrintWriter("opento.txt")
 
-
-
-
-
-    // now.. lets get down and dirty.
-    val amDf = df.select(
-      "id",
-      "city",
-      "zip",
-      "state",
-      "latitude",
-      "longitude",
-      "country",
-      "gender",
-      "dob",
-      "profile_caption",           // text
-      "profile_ethnicity",
-      "profile_weight",
-      "profile_height",
-      "profile_bodytype",
-      "profile_smoke",
-      "profile_drink",
-      "profile_relationship",
-      "pref_opento",
-      "pref_turnsmeon",
-      "pref_lookingfor",
-      "pref_lookingfor_abstract"    // text
-    )
-    // print the schema ..............
-    println(amDf.schema)
-    println("doing query..")
-
-    //load the city and population data
-    val worldCities = sc.textFile("../data/cities/worldcitiespop.txt")
-      .map(_.split(","))
-      .filter(_(0) != "Country")
-      .filter(s => s(4) != "" && s(5) != "" && s(6) != "")
-      .map(s => Data.City(s(0), s(1), s(2), s(3), s(4).toInt, s(5).toDouble, s(6).toDouble))
-      .toDF()
-
-    //worldCities.show(100)
-    worldCities.registerTempTable("Cities")
-
-    val women = amDf.filter("gender = 1").cache()
-    val men = amDf.filter("gender = 2").cache()
-
-    val menN = men.count()
-    val womenN = women.count()
-    println(s"Num Women ${womenN}")
-    println(s"Num Men ${menN}")
-
-    p.write(s"Num Women ${womenN}\n")
-    p.write(s"Num Men ${menN} \n")
-    p.write("\n\n")
-
-    men.registerTempTable("Men")
-    women.registerTempTable("Women")
-
-
-
-    val menProfileCaption = sqlContext.sql(
-      """
-        |SELECT a.profile_caption
-        |FROM Men a
-      """.stripMargin
-    )
-
-    val NGramSize = 5
-
-    menProfileCaption
-      // TODO: remove punctuation
-      // TODO: remove stop words ?
-      .map(r => r.getString(0).toLowerCase.split(" ") )   // lower case + split
-      .filter(r => r.length >= NGramSize)     // filter our small profiles
-      .flatMap(r => r.sliding(NGramSize) )
-      .map(r => (r.mkString(" "), 1))
-      .reduceByKey((a,b) => a+b)
-      .sortBy( _._2, false)
-      .take(25).foreach(println)
-
-
-    val womenProfileCaption = sqlContext.sql(
-      """
-        |SELECT a.profile_caption
-        |FROM Women a
-      """.stripMargin
-    )
-
-
-
-    womenProfileCaption
-      // TODO: remove punctuation
-      // TODO: remove stop words ?
-      .map(r => r.getString(0).toLowerCase.split(" ") )   // lower case + split
-      .filter(r => r.length >= NGramSize)     // filter our small profiles
-      .flatMap(r => r.sliding(NGramSize) )
-      .map(r => (r.mkString(" "), 1))
-      .reduceByKey((a,b) => a+b)
-      .sortBy( _._2, false)
-      .take(25).foreach(println)
-
-
-    // TODO: body type stats (age, height, ethnic, ect...)
-
-
-    println("################################################################################")
-
-
-    // open to totals...
     /*
-    val menOpenTo = men.select(df("pref_opento")).map { r =>
-      (r.getString(0).split("\\|").filter(_ != "").map(s => IntTypeMapping.prefOpenTo.get(s.toInt)).filter(_ != None).map(_.get).toSet)
-    }
-    val womenOpenTo = women.select(df("pref_opento")).map { r =>
-      (r.getString(0).split("\\|").filter(_ != "").map(s => IntTypeMapping.prefOpenTo.get(s.toInt)).filter(_ != None).map(_.get).toSet)
-    }
-    IntTypeMapping.prefOpenTo.values.map { opento =>
-      p.write(s"Men ${opento} totals\n")
-      val menx = menOpenTo.filter(_.contains(opento)).count
-      p.write(s"${menx} / ${menN}   ${(menx.toDouble/menN.toDouble)}\n\n")
 
-      p.write(s"Women ${opento} totals\n")
-      val womenx = womenOpenTo.filter(_.contains(opento)).count
-      p.write(s"${womenx} / ${womenN}   ${(womenx.toDouble/womenN.toDouble)}\n\n\n")
 
-    }
-    */
+
+       // now.. lets get down and dirty.
+       val amDf = df.select(
+         "id",
+         "city",
+         "zip",
+         "state",
+         "latitude",
+         "longitude",
+         "country",
+         "gender",
+         "dob",
+         "profile_caption",           // text
+         "profile_ethnicity",
+         "profile_weight",
+         "profile_height",
+         "profile_bodytype",
+         "profile_smoke",
+         "profile_drink",
+         "profile_relationship",
+         "pref_opento",
+         "pref_turnsmeon",
+         "pref_lookingfor",
+         "pref_lookingfor_abstract"    // text
+       )
+       // print the schema ..............
+       println(amDf.schema)
+       println("doing query..")
+
+       //load the city and population data
+       val worldCities = sc.textFile("../data/cities/worldcitiespop.txt")
+         .map(_.split(","))
+         .filter(_(0) != "Country")
+         .filter(s => s(4) != "" && s(5) != "" && s(6) != "")
+         .map(s => Data.City(s(0), s(1), s(2), s(3), s(4).toInt, s(5).toDouble, s(6).toDouble))
+         .toDF()
+
+       //worldCities.show(100)
+       worldCities.registerTempTable("Cities")
+
+       val women = amDf.filter("gender = 1").cache()
+       val men = amDf.filter("gender = 2").cache()
+
+       val menN = men.count()
+       val womenN = women.count()
+       println(s"Num Women ${womenN}")
+       println(s"Num Men ${menN}")
+
+       p.write(s"Num Women ${womenN}\n")
+       p.write(s"Num Men ${menN} \n")
+       p.write("\n\n")
+
+       men.registerTempTable("Men")
+       women.registerTempTable("Women")
+
+
+
+       val menProfileCaption = sqlContext.sql(
+         """
+           |SELECT a.profile_caption
+           |FROM Men a
+         """.stripMargin
+       )
+
+       val NGramSize = 5
+
+       menProfileCaption
+         // TODO: remove punctuation
+         // TODO: remove stop words ?
+         .map(r => r.getString(0).toLowerCase.split(" ") )   // lower case + split
+         .filter(r => r.length >= NGramSize)     // filter our small profiles
+         .flatMap(r => r.sliding(NGramSize) )
+         .map(r => (r.mkString(" "), 1))
+         .reduceByKey((a,b) => a+b)
+         .sortBy( _._2, false)
+         .take(25).foreach(println)
+
+
+       val womenProfileCaption = sqlContext.sql(
+         """
+           |SELECT a.profile_caption
+           |FROM Women a
+         """.stripMargin
+       )
+
+
+
+       womenProfileCaption
+         // TODO: remove punctuation
+         // TODO: remove stop words ?
+         .map(r => r.getString(0).toLowerCase.split(" ") )   // lower case + split
+         .filter(r => r.length >= NGramSize)     // filter our small profiles
+         .flatMap(r => r.sliding(NGramSize) )
+         .map(r => (r.mkString(" "), 1))
+         .reduceByKey((a,b) => a+b)
+         .sortBy( _._2, false)
+         .take(25).foreach(println)
+
+
+       // TODO: body type stats (age, height, ethnic, ect...)
+
+
+       println("################################################################################")
+
+
+       // open to totals...
+
+       val menOpenTo = men.select(df("pref_opento")).map { r =>
+         (r.getString(0).split("\\|").filter(_ != "").map(s => IntTypeMapping.prefOpenTo.get(s.toInt)).filter(_ != None).map(_.get).toSet)
+       }
+       val womenOpenTo = women.select(df("pref_opento")).map { r =>
+         (r.getString(0).split("\\|").filter(_ != "").map(s => IntTypeMapping.prefOpenTo.get(s.toInt)).filter(_ != None).map(_.get).toSet)
+       }
+       IntTypeMapping.prefOpenTo.values.map { opento =>
+         p.write(s"Men ${opento} totals\n")
+         val menx = menOpenTo.filter(_.contains(opento)).count
+         p.write(s"${menx} / ${menN}   ${(menx.toDouble/menN.toDouble)}\n\n")
+
+         p.write(s"Women ${opento} totals\n")
+         val womenx = womenOpenTo.filter(_.contains(opento)).count
+         p.write(s"${womenx} / ${womenN}   ${(womenx.toDouble/womenN.toDouble)}\n\n\n")
+
+       }
+       */
 
 
     // Discovered that Lat,Lng in a LOT of cases is messed up.. (sign is inverted)

@@ -1,7 +1,7 @@
 package io.surfkit.driver
 
 
-import io.surfkit.data.Data.{EmailCount, EmailStats}
+import io.surfkit.data.Data.{EmailStats}
 
 import scala.Predef._
 
@@ -45,15 +45,15 @@ object EmailMetrics extends App with SparkSetup{
     val totalDomains = topDomains.count()
     println(s"NUmber of domains ${totalDomains}")
 
-    val topCounts = topDomains.sortBy( _._2, false).take(250).map { d =>
+    val topCounts = topDomains.sortBy( _._2, false).map { d =>
       println(d)
       (d._1,d._2)
-    }
+    }.take(250)
 
     val json = EmailStats(
       total = total,
       totalDomains = totalDomains,
-      counts = topCounts
+      counts = topCounts.toSeq
     )
 
     // write data to json file

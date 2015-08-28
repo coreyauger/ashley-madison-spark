@@ -5,7 +5,7 @@ import io.surfkit.data.Data.NGramStats
 import org.apache.spark.rdd.RDD
 
 import scala.Predef._
-
+import io.surfkit.data._
 /**
  *
  * Created by Corey Auger
@@ -99,15 +99,14 @@ object NGram extends App with SparkSetup{
           .map(r => (r._1, 1))
           .reduceByKey((a, b) => a + b)
           .sortBy(_._2, false)
-          .take(250)
           .map(r =>
-          NGram(
-            ngram = r._1,
-            groupBy = "",
-            groupByValue = "",
-            count = r._2
-          )
-          )
+            Data.NGram(
+              ngram = r._1,
+              groupBy = "",
+              groupByValue = "",
+              count = r._2
+            )
+          ) .take(250)
         // write json file
         val total = profileCaption.count()
         val ngramStats = NGramStats(title = s"${sex} NGram-${ngramLen}", total = total, sex = sex, data = counts)
@@ -120,15 +119,14 @@ object NGram extends App with SparkSetup{
           .map(r => ((r._2._3, r._1), 1) )
           .reduceByKey((a, b) => a + b)
           .sortBy(_._2, false)
-          .take(250)
           .map(r =>
-          NGram(
-            ngram = r._1._2,
-            groupBy = "Country",
-            groupByValue = r._1._1.toString,
-            count = r._2
-          )
-          )
+            Data.NGram(
+              ngram = r._1._2,
+              groupBy = "Country",
+              groupByValue = r._1._1.toString,
+              count = r._2
+            )
+          ).take(250)
         // write json file
         val ngramStatsByCountry = NGramStats(title = s"${sex} NGram-${ngramLen} by Country", total = total, sex = sex, data = country)
         val jsonCountry = new java.io.PrintWriter(s"./output/ngram${sex}Country-${ngramLen}.json")
@@ -141,15 +139,15 @@ object NGram extends App with SparkSetup{
           .map(r => ((r._2._2, r._1), 1) )
           .reduceByKey((a, b) => a + b)
           .sortBy(_._2, false)
-          .take(250)
+
           .map(r =>
-          NGram(
-            ngram = r._1._2,
-            groupBy = "State",
-            groupByValue = r._1._1.toString,
-            count = r._2
-          )
-          )
+            Data.NGram(
+              ngram = r._1._2,
+              groupBy = "State",
+              groupByValue = r._1._1.toString,
+              count = r._2
+            )
+          ).take(250)
         // write json file
         val ngramStatsByState = NGramStats(title = s"${sex} NGram-${ngramLen} by State", total = total, sex = sex, data = state)
         val jsonState = new java.io.PrintWriter(s"./output/ngram${sex}State-${ngramLen}.json")
@@ -162,20 +160,19 @@ object NGram extends App with SparkSetup{
           .map(r => ((r._2._5, r._1), 1) )
           .reduceByKey((a, b) => a + b)
           .sortBy(_._2, false)
-          .take(250)
           .map(r =>
-          NGram(
-            ngram = r._1._2,
-            groupBy = "Ethnicity",
-            groupByValue = r._1._1.toString,
-            count = r._2
-          )
-          )
+            Data.NGram(
+              ngram = r._1._2,
+              groupBy = "Ethnicity",
+              groupByValue = r._1._1.toString,
+              count = r._2
+            )
+          ).take(250)
         // write json file
         val ngramStatsByEthnicity = NGramStats(title = s"${sex} NGram-${ngramLen} by Ethnicity", total = total, sex = sex, data = ethnicity)
         val jsonEthnicity = new java.io.PrintWriter(s"./output/ngram${sex}Ethnicity-${ngramLen}.json")
-        ngramStatsByEthnicity.write(upickle.default.write(jsonEthnicity))
-        ngramStatsByEthnicity.close()
+        jsonEthnicity.write(upickle.default.write(ngramStatsByEthnicity))
+        jsonEthnicity.close()
 
         profileCaption.unpersist()    // uncache RDD
       }
