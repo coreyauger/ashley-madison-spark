@@ -5,4 +5,8 @@ package io.surfkit.data
  */
 object Data {
   case class City(Country:String,City:String,AccentCity:String,Region:String,Population:Int,Latitude:Double,Longitude:Double)
+
+
+  case class EmailCount(domain:String, count:Long)
+  case class EmailStats(total:Long, totalDomains:Long, counts:Seq[EmailCount])
 }

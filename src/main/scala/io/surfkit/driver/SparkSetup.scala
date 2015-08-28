@@ -17,10 +17,10 @@ trait SparkSetup {
   )
   val jars = classes.map(_.getProtectionDomain().getCodeSource().getLocation().getPath())
 
-
   val conf = new SparkConf()
     .setAppName("Ashley Madison")
-    .setMaster("spark://192.168.200.240:7077")
+    .setMaster(config.getString("spark.master"))
+    .set("spark.executor.memory", "8g")
     .setJars(jars :+ "./target/scala-2.10/ashley-madison-spark_2.10-1.0.jar")      // send workers the driver..
 
   println("loading spark conf")
@@ -36,7 +36,7 @@ trait SparkSetup {
     "url" -> config.getString("database"),
     //"dbtable" -> "am_am_member",
     "dbtable" -> "am_tmp",            // small subset (10,000) records.
-    "user" -> "root",
+    "user" -> config.getString("dbuser"),
     "password" -> config.getString("password") ))
 
 }
