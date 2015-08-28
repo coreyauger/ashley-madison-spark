@@ -17,7 +17,7 @@ object NGram extends App with SparkSetup{
 
   override def main(args: Array[String]) {
 
-    import sqlContext.implicits._
+
     val p = new java.io.PrintWriter("./output/ngram.json")
 
     val women = sqlContext.sql(
@@ -39,6 +39,7 @@ object NGram extends App with SparkSetup{
     val stream : InputStream = getClass.getResourceAsStream("/stopwords.txt")
     val stopWords = scala.io.Source.fromInputStream( stream ).getLines.map(_.trim).toSet
 
+    import sqlContext.implicits._
     // TODO: ngram by city.. ??
     // TODO: ngram by age
 
