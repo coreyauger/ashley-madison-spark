@@ -27,3 +27,15 @@ addCommandAlias("email",  "run-main io.surfkit.driver.EmailMetrics")
 addCommandAlias("ngram",  "run-main io.surfkit.driver.NGram")
 
 addCommandAlias("main",  "run-main io.surfkit.driver.Main")
+
+
+assemblyMergeStrategy in assembly := {
+  case PathList("javax", "servlet", xs @ _*)         => MergeStrategy.first
+  case PathList(ps @ _*) if ps.last endsWith ".html" => MergeStrategy.first
+  case "application.conf"                            => MergeStrategy.concat
+  case "unwanted.txt"                                => MergeStrategy.discard
+  case x =>
+    //val oldStrategy = (assemblyMergeStrategy in assembly).value
+    //oldStrategy(x)
+    MergeStrategy.first
+}
