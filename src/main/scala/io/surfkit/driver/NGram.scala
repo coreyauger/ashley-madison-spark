@@ -1,6 +1,8 @@
 package io.surfkit.driver
 
 import io.surfkit.data.Data
+import io.surfkit.data.Data.NGramStats
+import org.apache.spark.rdd.RDD
 
 import scala.Predef._
 
@@ -18,74 +20,168 @@ object NGram extends App with SparkSetup{
 
     val women = sqlContext.sql(
       """
-        |SELECT profile_caption, pref_lookingfor_abstract, city, state, country, gender, dob, profile_ethnicity
+        |SELECT profile_caption, pref_lookingfor_abstract, city, state, country, dob, profile_ethnicity
+        |FROM members
         |WHERE gender = 2
       """.stripMargin
-    ).cache()
+    )
     val men = sqlContext.sql(
       """
-        |SELECT profile_caption, pref_lookingfor_abstract, city, state, country, gender, dob, profile_ethnicity
+        |SELECT profile_caption, pref_lookingfor_abstract, city, state, country, dob, profile_ethnicity
+        |FROM members
         |WHERE gender = 1
-      """.stripMargin
-    ).cache()
-
-    // TODO: profile_caption
-    // TODO: pref_lookingfor_abstract
-
-    val menN = men.count()
-    val womenN = women.count()
-    println(s"Num Women ${womenN}")
-    println(s"Num Men ${menN}")
-
-    p.write(s"Num Women ${womenN}\n")
-    p.write(s"Num Men ${menN} \n")
-    p.write("\n\n")
-
-    men.registerTempTable("Men")
-    women.registerTempTable("Women")
-
-
-    val menProfileCaption = sqlContext.sql(
-      """
-        |SELECT a.profile_caption
-        |FROM Men a
       """.stripMargin
     )
 
-    val NGramSize = 5
 
-    // TODO: ngram by city..
-    // TODO: ngram by country
-    // TODO: ngram by ethnicity
+    val stopWords = sc.textFile("./stopwords.txt").collect().toSet
+
+    // TODO: ngram by city.. ??
     // TODO: ngram by age
 
-    // TODO: most used words NGram=1 remove stop words..
 
-    men
-      // TODO: remove punctuation
-      // TODO: remove stop words ?
-      .map(r => r.getString(0).toLowerCase.split(" ") )   // lower case + split
-      .filter(r => r.length >= NGramSize)     // filter our small profiles
-      .flatMap(r => r.sliding(NGramSize) )
-      .map(r => (r.mkString(" "), 1))
-      .reduceByKey((a,b) => a+b)
-      .sortBy( _._2, false)
-      .take(25).foreach(println)
+    val menDf = men
+      .map(r =>
+        ( // tokenize, convert to lowercase, and remove stop words.
+          (r.getString(0).toLowerCase.split(" ")).filter(w => !stopWords.contains(w)),      // profile_caption
+          (r.getString(0).toLowerCase.split(" ")).filter(w => !stopWords.contains(w)),      // pref_lookingfor_abstract
+          r.getString(2),                             // city
+          r.getInt(3),                                // state
+          r.getInt(4),                                // country
+          r.getDate(5),                               // dob
+          r.getInt(6)                                 // profile_ethnicity
+        )
+      )
+    menDf.cache()     // cache in memory
+
+    val womenDf = women
+      .map(r =>
+      ( // tokenize, convert to lowercase, and remove stop words.
+        (r.getString(0).toLowerCase.split(" ")).filter(w => !stopWords.contains(w)),      // profile_caption
+        (r.getString(0).toLowerCase.split(" ")).filter(w => !stopWords.contains(w)),      // pref_lookingfor_abstract
+        r.getString(2),                             // city
+        r.getInt(3),                                // state
+        r.getInt(4),                                // country
+        r.getDate(5),                               // dob
+        r.getInt(6)                                 // profile_ethnicity
+        )
+      )
+
+    womenDf.cache()     // cache in memory
+
+    val MaxNGramSize = 6
+
+    val menN = menDf.count()
+    val womenN = womenDf.count()
+    println(s"Num Women ${womenN}")
+    println(s"Num Men ${menN}")
+
+    (1 to MaxNGramSize).foreach{ ngramLen =>
+      Seq( (menDf, "Men"), (womenDf, "Women") ).foreach { case (rdd, sex) =>
+        val profileCaption = rdd.filter(r => r._1.length >= ngramLen) // filter out less then ngrams
+          .flatMap(r =>
+          r._1.sliding(ngramLen).map { ngram =>
+            (
+              ngram.mkString(" "),
+              (
+                r._3, // city
+                r._4, // state
+                r._5, // country
+                r._6, // dob
+                r._7 // profile_ethnicity
+                )
+              )
+          }
+          )
+        profileCaption.cache() // cache this RDD
+
+        val counts = profileCaption
+          .map(r => (r._1, 1))
+          .reduceByKey((a, b) => a + b)
+          .sortBy(_._2, false)
+          .take(250)
+          .map(r =>
+          NGram(
+            ngram = r._1,
+            groupBy = "",
+            groupByValue = "",
+            count = r._2
+          )
+          )
+        // write json file
+        val total = profileCaption.count()
+        val ngramStats = NGramStats(title = s"${sex} NGram-${ngramLen}", total = total, sex = sex, data = counts)
+        val json = new java.io.PrintWriter(s"./output/ngram${sex}Total-${ngramLen}.json")
+        json.write(upickle.default.write(ngramStats))
+        json.close()
+
+        // group by country...
+        val country = profileCaption
+          .map(r => ((r._2._3, r._1), 1) )
+          .reduceByKey((a, b) => a + b)
+          .sortBy(_._2, false)
+          .take(250)
+          .map(r =>
+          NGram(
+            ngram = r._1._2,
+            groupBy = "Country",
+            groupByValue = r._1._1.toString,
+            count = r._2
+          )
+          )
+        // write json file
+        val ngramStatsByCountry = NGramStats(title = s"${sex} NGram-${ngramLen} by Country", total = total, sex = sex, data = country)
+        val jsonCountry = new java.io.PrintWriter(s"./output/ngram${sex}Country-${ngramLen}.json")
+        jsonCountry.write(upickle.default.write(ngramStatsByCountry))
+        jsonCountry.close()
 
 
-    women
-      // TODO: remove punctuation
-      // TODO: remove stop words ?
-      .map(r => r.getString(0).toLowerCase.split(" ") )   // lower case + split
-      .filter(r => r.length >= NGramSize)     // filter our small profiles
-      .flatMap(r => r.sliding(NGramSize) )
-      .map(r => (r.mkString(" "), 1))
-      .reduceByKey((a,b) => a+b)
-      .sortBy( _._2, false)
-      .take(25).foreach(println)
+        // group by state...
+        val state = profileCaption
+          .map(r => ((r._2._2, r._1), 1) )
+          .reduceByKey((a, b) => a + b)
+          .sortBy(_._2, false)
+          .take(250)
+          .map(r =>
+          NGram(
+            ngram = r._1._2,
+            groupBy = "State",
+            groupByValue = r._1._1.toString,
+            count = r._2
+          )
+          )
+        // write json file
+        val ngramStatsByState = NGramStats(title = s"${sex} NGram-${ngramLen} by State", total = total, sex = sex, data = state)
+        val jsonState = new java.io.PrintWriter(s"./output/ngram${sex}State-${ngramLen}.json")
+        jsonState.write(upickle.default.write(ngramStatsByState))
+        jsonState.close()
 
 
-    println("################################################################################")
+        // group by ethnicity...
+        val ethnicity = profileCaption
+          .map(r => ((r._2._5, r._1), 1) )
+          .reduceByKey((a, b) => a + b)
+          .sortBy(_._2, false)
+          .take(250)
+          .map(r =>
+          NGram(
+            ngram = r._1._2,
+            groupBy = "Ethnicity",
+            groupByValue = r._1._1.toString,
+            count = r._2
+          )
+          )
+        // write json file
+        val ngramStatsByEthnicity = NGramStats(title = s"${sex} NGram-${ngramLen} by Ethnicity", total = total, sex = sex, data = ethnicity)
+        val jsonEthnicity = new java.io.PrintWriter(s"./output/ngram${sex}Ethnicity-${ngramLen}.json")
+        ngramStatsByEthnicity.write(upickle.default.write(jsonEthnicity))
+        ngramStatsByEthnicity.close()
+
+        profileCaption.unpersist()    // uncache RDD
+      }
+
+    }
+
 
     p.close()
     sc.stop()

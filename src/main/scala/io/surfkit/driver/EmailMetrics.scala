@@ -14,6 +14,8 @@ object EmailMetrics extends App with SparkSetup{
 
   override def main(args: Array[String]) {
 
+    val p = new java.io.PrintWriter("./output/email.json")
+
     sqlContext.load("jdbc", Map(
       "url" -> config.getString("database"),
       "dbtable" -> "aminno_member_email",
@@ -23,7 +25,7 @@ object EmailMetrics extends App with SparkSetup{
 
     val email = sqlContext.sql(
       """
-        |SELECT email
+        |SELECT lower(email)
         |FROM email
       """.stripMargin
     )
@@ -37,7 +39,7 @@ object EmailMetrics extends App with SparkSetup{
 
     val topDomains =
       validEmail
-        .map(s => (s.substring(s.indexOf('@')),1))  // get the domain..
+        .map(s => (s.substring(s.indexOf('@')+1),1))  // get the domain..
         .reduceByKey((a,b) => a+b)
 
     val totalDomains = topDomains.count()
@@ -45,10 +47,7 @@ object EmailMetrics extends App with SparkSetup{
 
     val topCounts = topDomains.sortBy( _._2, false).take(250).map { d =>
       println(d)
-      EmailCount(
-        domain = d._1,
-        count = d._2
-      )
+      (d._1,d._2)
     }
 
     val json = EmailStats(
@@ -58,7 +57,7 @@ object EmailMetrics extends App with SparkSetup{
     )
 
     // write data to json file
-    val p = new java.io.PrintWriter("./output/email.json")
+
     p.write(upickle.default.write(json))
     p.close()
 

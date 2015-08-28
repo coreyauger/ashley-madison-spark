@@ -38,5 +38,6 @@ trait SparkSetup {
     "dbtable" -> "am_tmp",            // small subset (10,000) records.
     "user" -> config.getString("dbuser"),
     "password" -> config.getString("password") ))
+  .registerTempTable("members")
 
 }
