@@ -61,8 +61,10 @@ object NGram extends App with SparkSetup{
     val womenDf = women
       .map(r =>
       ( // tokenize, convert to lowercase, and remove stop words.
-        (r.getString(0).toLowerCase.split(" ")).filter(w => !stopWords.contains(w)),      // profile_caption
-        (r.getString(0).toLowerCase.split(" ")).filter(w => !stopWords.contains(w)),      // pref_lookingfor_abstract
+        (r.getString(0).toLowerCase.split(" "))
+          .filter(w => !stopWords.contains(w.replaceAll("[^\\w\\s]",""))),      // profile_caption
+        (r.getString(0).toLowerCase.split(" "))
+          .filter(w => !stopWords.contains(w.replaceAll("[^\\w\\s]",""))),      // pref_lookingfor_abstract
         r.getString(2),                             // city
         r.getInt(3),                                // state
         r.getInt(4),                                // country
