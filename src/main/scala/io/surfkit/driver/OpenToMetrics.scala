@@ -1,5 +1,6 @@
 package io.surfkit.driver
 
+import io.surfkit.am.IntTypeMapping
 import io.surfkit.data.Data
 
 import scala.Predef._
@@ -14,23 +15,22 @@ object OpenToMetrics extends App with SparkSetup{
   override def main(args: Array[String]) {
 
     import sqlContext.implicits._
-
-
-
+    
     val p = new java.io.PrintWriter("./output/opento.json")
-
 
 
     val women = sqlContext.sql(
       """
         |SELECT pref_opento, city, state, country, gender, dob, profile_ethnicity, profile_bodytype
-        |WHERE gender = 2
+        |FROM members
+        |WHERE gender = 1
       """.stripMargin
     ).cache()
     val men = sqlContext.sql(
       """
         |SELECT pref_opento, city, state, country, gender, dob, profile_ethnicity, profile_bodytype
-        |WHERE gender = 1
+        |FROM members
+        |WHERE gender = 2
       """.stripMargin
     ).cache()
 
@@ -66,12 +66,12 @@ object OpenToMetrics extends App with SparkSetup{
 
 
     // open to totals...
-    /*
-    val menOpenTo = men.select(df("pref_opento")).map { r =>
-      (r.getString(0).split("\\|").filter(_ != "").map(s => IntTypeMapping.prefOpenTo.get(s.toInt)).filter(_ != None).map(_.get).toSet)
+
+    val menOpenTo = men.map(r => if(!r.isNullAt(0)) "" else r.getString(0)).map { r =>
+      (r.split("\\|").filter(_ != "").map(s => IntTypeMapping.prefOpenTo.get(s.toInt)).filter(_ != None).map(_.get).toSet)
     }
-    val womenOpenTo = women.select(df("pref_opento")).map { r =>
-      (r.getString(0).split("\\|").filter(_ != "").map(s => IntTypeMapping.prefOpenTo.get(s.toInt)).filter(_ != None).map(_.get).toSet)
+    val womenOpenTo = women.map(r => if(!r.isNullAt(0)) "" else r.getString(0)).map { r =>
+      (r.split("\\|").filter(_ != "").map(s => IntTypeMapping.prefOpenTo.get(s.toInt)).filter(_ != None).map(_.get).toSet)
     }
     IntTypeMapping.prefOpenTo.values.map { opento =>
       p.write(s"Men ${opento} totals\n")
@@ -83,7 +83,7 @@ object OpenToMetrics extends App with SparkSetup{
       p.write(s"${womenx} / ${womenN}   ${(womenx.toDouble/womenN.toDouble)}\n\n\n")
 
     }
-    */
+
 
 
     // Discovered that Lat,Lng in a LOT of cases is messed up.. (sign is inverted)
@@ -115,8 +115,6 @@ object OpenToMetrics extends App with SparkSetup{
     */
 
 
-    // TODO: all 1
-    /*
     val menCityOpenTo = sqlContext.sql(
       """
         |SELECT a.city, a.pref_opento, b.Population
@@ -154,7 +152,7 @@ object OpenToMetrics extends App with SparkSetup{
       womenCityOpenTo2.filter(_._2.contains(opento)).map(r => ((r._1,r._3), 1) ).reduceByKey((a,b) => a+b).map(s => (s._1._1,s._1._2.toDouble, s._2 )).sortBy( _._3, false).take(20).foreach(s => p.write(s.toString+ "\n"))
       p.write("\n\n")
     }
-    */
+
 
 
     p.close()
