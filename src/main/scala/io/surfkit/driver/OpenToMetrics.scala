@@ -15,7 +15,7 @@ object OpenToMetrics extends App with SparkSetup{
   override def main(args: Array[String]) {
 
     import sqlContext.implicits._
-    
+
     val p = new java.io.PrintWriter("./output/opento.json")
 
 

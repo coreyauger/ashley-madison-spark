@@ -28,6 +28,9 @@ addCommandAlias("ngram",  "run-main io.surfkit.driver.NGram")
 
 addCommandAlias("main",  "run-main io.surfkit.driver.Main")
 
+addCommandAlias("states",  "run-main io.surfkit.driver.DiscoverState")
+
+
 
 assemblyMergeStrategy in assembly := {
   case PathList("javax", "servlet", xs @ _*)         => MergeStrategy.first

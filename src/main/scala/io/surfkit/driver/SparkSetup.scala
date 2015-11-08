@@ -41,8 +41,8 @@ trait SparkSetup {
 
   val df = sqlContext.load("jdbc", Map(
     "url" -> config.getString("database"),
-    "dbtable" -> "am_am_member",
-    //"dbtable" -> "am_tmp",            // small subset (10,000) records.
+   // "dbtable" -> "am_am_member",
+    "dbtable" -> "am_am_member2",            // small subset (1M) records.
     "user" -> config.getString("dbuser"),
     "password" -> config.getString("password") ))
   .registerTempTable("members")
